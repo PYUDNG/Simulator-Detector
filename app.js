@@ -5,7 +5,7 @@ window.addEventListener('load', function() {
 	document.querySelector('#question').innerText = `${a} + ${b} = `;
 	submit.addEventListener('click', e => {
 		document.querySelector('#answer').value === (a + b).toString()
-			&& alert('Captcha passed');
+			&& !simulatorDetector.bypassed && alert('Captcha passed');
 	});
 
 	simulatorDetector.addEventListener('detect', e => {
@@ -13,6 +13,11 @@ window.addEventListener('load', function() {
 	});
 
 	simulatorDetector.addEventListener('bypass', e => {
+        bypassed = true;
 		console.log('Bypasser script detected', e.detail);
 	});
+
+    if (simulatorDetector.bypassed) {
+        console.log('Bypasser script detected');
+    }
 });

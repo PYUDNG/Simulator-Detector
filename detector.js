@@ -55,31 +55,46 @@
 		configurable: false,
 		enumerable: true,
 	});
+    simulatorDetector.bypassed = false;
 
 	// Hook EventTarget
-	window.EventTarget.prototype.addEventListener = function(name, func, options) {
-		const args = [...arguments];
-		if (isElement(this)) {
-			args[1] = listener;
-			Resources.set.call(listenerMap, func, listener);
-			captureDocument(name);
-		}
-		addEventListener.apply(this, args);
-
-		function listener(e) {
-			if (!e.isTrusted) {
-				simulatorDetector.dispatchEvent(new Resources.CustomEvent('detect', { detail: {
-					target: this,
-					event: e,
-					stack: new Resources.Error().stack
-				} }));
-				Resources.preventDefault.call(e);
-				Resources.stopImmediatePropagation.call(e);
-				return false;
-			}
-			func.apply(this, arguments);
-		}
-	}
+    try {
+        Object.defineProperty(window.EventTarget.prototype, 'addEventListener', {
+            get() {
+                return function(name, func, options) {
+                    const args = [...arguments];
+                    if (isElement(this)) {
+                        args[1] = listener;
+                        Resources.set.call(listenerMap, func, listener);
+                        captureDocument(name);
+                    }
+                    addEventListener.apply(this, args);
+            
+                    function listener(e) {
+                        if (!e.isTrusted) {
+                            simulatorDetector.dispatchEvent(new Resources.CustomEvent('detect', { detail: {
+                                target: this,
+                                event: e,
+                                stack: new Resources.Error().stack
+                            } }));
+                            Resources.preventDefault.call(e);
+                            Resources.stopImmediatePropagation.call(e);
+                            return false;
+                        }
+                        func.apply(this, arguments);
+                    }
+                }
+            },
+            configurable: false,
+            enumerable: true
+        });
+    } catch(err) {
+        simulatorDetector.bypassed = true;
+        simulatorDetector.dispatchEvent(new Resources.CustomEvent('bypass', { detail: {
+            error: err,
+            element: null
+        } }));
+    }
 	window.EventTarget.prototype.removeEventListener = function(name, func, options) {
 		const args = [...arguments];
 		if (isElement(this) && func && Resources.has.call(listenerMap, func)) {
@@ -133,6 +148,7 @@
 				}
 			});
 		} catch (err) {
+            simulatorDetector.bypassed = true;
 			simulatorDetector.dispatchEvent(new Resources.CustomEvent('bypass', { detail: {
 				error: err,
 				element
